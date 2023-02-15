@@ -1,4 +1,4 @@
-# DRTV-ripper
+# DRTV-ripper - dr.dk/drtv
 DRTV-ripper is a software tool that facilitates the ripping of specific shows. It is built using modules such as pyppeteer, asyncio, and youtube-dl - and can be used via a simple and easy to understand console interface.
 
 Please note that, at present, the download speed may be slower than expected. This is because yt-dlp is not currently compatible with DRTV shows, and youtube-dl is being used as an alternative. However, despite its reduced speed, the software remains highly functional and can still be used to download the desired content.
@@ -16,6 +16,7 @@ These are some of the functions I plan to add to the code:
 * Remove temp_drtv_ripper folder because it's technically not needed
 * Option to pick own quality
 * Option to download all seasons by typing 'all'
+* Each episode gets sorted into the corresponding season instead of having every episode in one big folder
 
 # Installation
 1. Git clone this repo by doing 'git clone ...'
