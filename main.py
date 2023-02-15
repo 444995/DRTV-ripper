@@ -7,8 +7,6 @@ import re
 import os
 
 
-
-
 # Xpath for the title of the tv show on dr.dk/drtv website
 TVSHOW_TITLE_XPATH = '//*[@id="row0"]/section/div/div/div/h1'
 
@@ -22,7 +20,7 @@ class DRTVScraper:
         self.temp_folder = "temp_drtv_ripper"
         self.maximum_tries = 10
 
-        os.system('cls')
+        os.system('cls' if os.name == 'nt' else 'clear')
         
         tvshow_link = str(input("Enter the link to the show: "))
         tree = self.get_tree(tvshow_link)
@@ -41,7 +39,7 @@ class DRTVScraper:
         tree = html.fromstring(response.content)
 
         return tree
-
+    
 
     def fetch_tvshow_title(self, tree):
         tvshow_title = tree.xpath(TVSHOW_TITLE_XPATH)[0].text_content()
