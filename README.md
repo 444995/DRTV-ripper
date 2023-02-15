@@ -13,8 +13,7 @@ These are some of the functions I plan to add to the code:
 * Sort by episode date instead - right now some shows are apparently sorted in reverse order on the website (they are so braindead)
 * Year added to episode title by scraping the year from dr.tv
 * Timedate to console output
-* Remove temp_drtv_ripper folder all together
-* Error output msg if a download fails
+* Remove temp_drtv_ripper folder because it's technically not needed
 * Option to pick own quality
 * Option to download all seasons by typing 'all'
 
