@@ -7,6 +7,8 @@ import re
 import os
 
 
+
+
 # Xpath for the title of the tv show on dr.dk/drtv website
 TVSHOW_TITLE_XPATH = '//*[@id="row0"]/section/div/div/div/h1'
 
@@ -27,11 +29,12 @@ class DRTVScraper:
         tvshow_title = self.fetch_tvshow_title(tree)
         self.season_dic = self.fetch_tvshow_available_seasons(tree, tvshow_link)
         season_links_to_scrape = self.get_info(tvshow_title, self.season_dic)
+        
         for season_url in season_links_to_scrape:
             episode_links = asyncio.run(self.fetch_episode_links(season_url))
             self.scrape_episodes(episode_links, season_url, tvshow_title)
 
-        print('Scraping done!')
+        print('\nScraping done!')
 
 
     def get_tree(self, url):
@@ -39,7 +42,7 @@ class DRTVScraper:
         tree = html.fromstring(response.content)
 
         return tree
-    
+
 
     def fetch_tvshow_title(self, tree):
         tvshow_title = tree.xpath(TVSHOW_TITLE_XPATH)[0].text_content()
@@ -102,23 +105,27 @@ class DRTVScraper:
     async def fetch_episode_links(self, season_url):
         episode_links = []
         
+        # launch browser and create new page
         browser = await launch()
-        
         page = await browser.newPage()
+        
+        # set viewport and get corresponding season number
         await page.setViewport({'width': 1, 'height': 1})
-
         specific_season = self.get_corresponding_season(season_url)
+        
+        # navigate to season URL
         print(f'\nScraping episode links from season {specific_season} | url: {season_url}\n')
         await page.goto(season_url)
-        await asyncio.sleep(2)  # wait for 1 second
-        # Evaluate the button element and click it
+        await asyncio.sleep(2)  # wait for 2 seconds to make the page load
+        
+        # Click the "show more" button, if present
         button_selector = '#row1 > section > div:nth-child(2) > div.show-more-episodes__show-more-button__wrapper > button'
         try:
-            await page.evaluate(f'document.querySelector("{button_selector}").click()')
+            await page.click(button_selector)
         except:
             pass
 
-        # Get the episode information
+        # Loop through each episode element and extract link
         episode_count = 0
         while True:
             try:
@@ -127,70 +134,72 @@ class DRTVScraper:
                 episode_link = await (await episode_element[0].getProperty('href')).jsonValue()
                 episode_link = episode_link.replace('https://www.dr.dk/drtv/episode/', 'https://www.dr.dk/drtv/se/')
                 episode_links.append(episode_link)
+                
+                # Click the "show more" button, if present again
                 try:
-                    await page.evaluate(f'document.querySelector("{button_selector}").click()')
+                    await page.click(button_selector)
                 except:
                     pass
             except:
                 break
-            
+        
+        # close browser and return episode links
         await browser.close()
-
         return episode_links
 
 
     def scrape_episodes(self, episode_links, season_url, tvshow_title):
-
-        # Makes a folder called temp_drtv_ripper if it doesn't exist
-        if not os.path.exists(self.temp_folder):
-            os.makedirs(self.temp_folder)
-
-        # os.environ['YOUTUBE_DL_NO_CALL_HOME'] = '1'
-        CREATE_NO_WINDOW = 0x08000000
-        
         # Get the season number
         specific_season = int(self.get_corresponding_season(season_url))
-
-        # Count is needed to get the episode number
-        count = 0
-
+        
         # Loop through all the episode links
-        for url in episode_links:
-            count += 1
-
+        for count, url in enumerate(episode_links, start=1):
             # Format season and episode numbers as zero-padded strings if less than 10
             season_str = f'S{specific_season:02d}'
             episode_str = f'E{count:02d}'
             print(f'Downloading {season_str}{episode_str} | url: {url}')
-            run = True
+            
             tries = 0
-            while run:
+            while tries < self.maximum_tries:
                 try:
                     tries += 1
-                    output = subprocess.check_output(f'youtube-dl --no-call-home -o "{self.temp_folder}/%(title)s.%(ext)s" --verbose "{url}"', shell=True, stderr=subprocess.STDOUT)
-                    run = False
-                except:
-                    if tries >= self.maximum_tries:
+    
+                    # Download the video using youtube-dl
+                    output = subprocess.check_output(['youtube-dl', '--no-call-home', '-o', f'{tvshow_title}/%(title)s.%(ext)s', '--verbose', url], stderr=subprocess.STDOUT)
+                    filename = output.decode('iso-8859-1').strip()  # Get last line of output
+
+                    # Get the current filename of the media file from the output
+                    match = re.search(r'\[ffmpeg\] Merging formats into "(.*?)"', filename)
+                    if match: 
+                        filename = match.group(1)
+                    else: 
                         print(f'Error downloading {season_str}{episode_str} | url: {url}')
-                        break
-                
-            filename = output.decode('iso-8859-1').strip()  # Get last line of output
-            pattern = re.compile(r'\[ffmpeg\] Merging formats into "(.*?)"')
-            match = pattern.search(filename)
-            if match:
-                filename = match.group(1)
-            else:
-                print(f'Error downloading {season_str}{episode_str} | url: {url}')
+                                        
+                    # Get the new filename with the right format
+                    file_ext = os.path.splitext(filename)[1]
+                    new_filename = f'{tvshow_title}.{season_str}{episode_str}{file_ext}'
+                    
+                    # Move the downloaded file to the right directory with the right filename
+                    os.makedirs(os.path.join(tvshow_title, f'Season {specific_season}'), exist_ok=True)
 
-            # First get the file extension 
-            file_ext = os.path.splitext(filename)[1]
+                    # Use zero-padded strings for season and episode numbers if less than 10 to get for example S01E01 instead of S1E1
+                    if specific_season < 10:
+                        new_filename = f'{tvshow_title}.{season_str}{episode_str}'
+                    else:
+                        new_filename = f'{tvshow_title}.{season_str}{episode_str}'
 
-            # Use zero-padded strings for season and episode numbers if less than 10 to get for example S01E01 instead of S1E1
-            if specific_season < 10:
-                new_filename = f'{tvshow_title}.{season_str}{episode_str}'
-            else:
-                new_filename = f'{tvshow_title}.{season_str}{episode_str}'
-            os.rename(filename, f'{tvshow_title}\\' + new_filename + file_ext)
+                    # Rename the file
+                    os.rename(filename, f'{tvshow_title}\\Season {specific_season}\\' + new_filename + file_ext)
+                    
+                    # Break out of the retry loop if the download was successful
+                    break
+
+                except:
+                    # Retry if there was an error, unless the maximum number of tries has been reached
+                    if tries == self.maximum_tries:
+                        print(f'Error downloading {season_str}{episode_str} | url: {url}')
+                    else:
+                        print(f'Retrying {season_str}{episode_str} ({tries}/{self.maximum_tries}) | url: {url}')
 
 
     def get_corresponding_season(self, url):
