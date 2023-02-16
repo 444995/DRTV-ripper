@@ -7,8 +7,6 @@ import re
 import os
 
 
-
-
 # Xpath for the title of the tv show on dr.dk/drtv website
 TVSHOW_TITLE_XPATH = '//*[@id="row0"]/section/div/div/div/h1'
 
@@ -19,17 +17,17 @@ TVSHOW_SEASONS_XPATH = '//*[@id="season-list-container"]//a'
 class DRTVScraper:
     def __init__(self):
         # self.output_yt_dl
-        self.temp_folder = "temp_drtv_ripper"
         self.maximum_tries = 10
 
         os.system('cls' if os.name == 'nt' else 'clear')
         
         tvshow_link = str(input("Enter the link to the show: "))
+
         tree = self.get_tree(tvshow_link)
         tvshow_title = self.fetch_tvshow_title(tree)
         self.season_dic = self.fetch_tvshow_available_seasons(tree, tvshow_link)
         season_links_to_scrape = self.get_info(tvshow_title, self.season_dic)
-        
+
         for season_url in season_links_to_scrape:
             episode_links = asyncio.run(self.fetch_episode_links(season_url))
             self.scrape_episodes(episode_links, season_url, tvshow_title)
@@ -38,23 +36,30 @@ class DRTVScraper:
 
 
     def get_tree(self, url):
+        # Get the html tree from the url
         response = requests.get(url)
-        tree = html.fromstring(response.content)
 
+        # Parse the html tree
+        tree = html.fromstring(response.content)
         return tree
 
 
     def fetch_tvshow_title(self, tree):
+        # Extract the title of the tv show
         tvshow_title = tree.xpath(TVSHOW_TITLE_XPATH)[0].text_content()
-        if not os.path.exists(tvshow_title):
-            os.makedirs(tvshow_title)
+
+        # If the folder doesn't exist, create it
+        os.makedirs(tvshow_title, exist_ok=True)
+
         return tvshow_title
 
 
     def fetch_tvshow_available_seasons(self, tree, tvshow_link):
-        try:
+        # Tries to get the seasons from the xpath
+        try: 
             tvshow_seasons = tree.xpath(TVSHOW_SEASONS_XPATH)
-        except: # returns [1] if there is only one season since the xpath crashes if there is only one season
+        except: 
+            # returns [1] if there is only one season since the xpath crashes if there is only one season
             return [1]
 
         # Create a dictionary to store the extracted items
@@ -70,7 +75,6 @@ class DRTVScraper:
         if not dic:
             return {'1': tvshow_link}
 
-
         return dic
 
 
@@ -78,6 +82,7 @@ class DRTVScraper:
         # Extract the text values into a list and sort it
         all_available_seasons = list(season_list.keys())
         all_available_seasons.sort()
+
         # Splits up the list into a string separated by commas
         seasons = ", ".join(str(season) for season in all_available_seasons)
 
@@ -86,42 +91,49 @@ class DRTVScraper:
         print('\nWhich seasons would you like to download?\n')
         seasons_to_scrape = input('> ')
         
-        # splits them up and adds them to a list so if user types 1, 2, 3 or 1 and 2 and 3, it will still be ['1', '2', '3']
+        # Splits them up and adds them to a list so if user types 1, 2, 3 or 1 and 2 and 3, it will still be ['1', '2', '3']
         seasons_to_scrape = re.findall(r'\d+', seasons_to_scrape)
 
-        # convert strings to integers
+        # Convert strings to integers
         seasons_to_scrape = [int(num) for num in seasons_to_scrape]
 
-        # sort the list
+        # Sort the list
         seasons_to_scrape.sort()
 
+        # Create a list to store the urls
         urls = []
         for season in seasons_to_scrape:
             if str(season) in season_list:
                 urls.append(season_list[str(season)])
+
         return urls
 
 
     async def fetch_episode_links(self, season_url):
+        # Create a list to store the episode links
         episode_links = []
         
-        # launch browser and create new page
+        # Launch browser and create new page
         browser = await launch()
         page = await browser.newPage()
         
-        # set viewport and get corresponding season number
+        # Set viewport and get corresponding season number
         await page.setViewport({'width': 1, 'height': 1})
+
+        # Get the corresponding season number from the url using the dic
         specific_season = self.get_corresponding_season(season_url)
         
         # navigate to season URL
         print(f'\nScraping episode links from season {specific_season} | url: {season_url}\n')
         await page.goto(season_url)
         await asyncio.sleep(2)  # wait for 2 seconds to make the page load
-        
-        # Click the "show more" button, if present
+
+        # Get the button selector for the show more button to load more episodes
         button_selector = '#row1 > section > div:nth-child(2) > div.show-more-episodes__show-more-button__wrapper > button'
+
+        # Evaluate the button element and click it if it exists
         try:
-            await page.click(button_selector)
+            await page.evaluate(f'document.querySelector("{button_selector}").click()')
         except:
             pass
 
@@ -129,17 +141,24 @@ class DRTVScraper:
         episode_count = 0
         while True:
             try:
+                # Get the episode link and append it to the list
                 episode_count += 1
-                episode_element = await page.xpath(f'/html/body/div[2]/div/div[1]/div[1]/main/div[2]/div/section[2]/section/div[2]/div/div[{episode_count}]/div/a')
+                
+                episode_element = await page.xpath(f'//*[@id="row1"]/section/div[2]/div/div[{episode_count}]/div/a')
                 episode_link = await (await episode_element[0].getProperty('href')).jsonValue()
-                episode_link = episode_link.replace('https://www.dr.dk/drtv/episode/', 'https://www.dr.dk/drtv/se/')
+
+                # Replaces episode with se to get the correct link
+                episode_link = episode_link.replace('/episode/', '/se/')
+
+                # Append the link to the list
                 episode_links.append(episode_link)
                 
                 # Click the "show more" button, if present again
                 try:
-                    await page.click(button_selector)
+                    await page.evaluate(f'document.querySelector("{button_selector}").click()')
                 except:
                     pass
+
             except:
                 break
         
