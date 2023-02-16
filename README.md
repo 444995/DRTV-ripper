@@ -14,8 +14,10 @@ These are some of the functions I plan to add to the code:
 * Timedate to console output
 * Option to pick own quality
 * Option to download all seasons by typing 'all'
+* Option to convert media to .mkv instead of having .mp4 since .mkv is better for Plex etc.
 
 # Errors to fix
+These are the errors I plan to fix
 * Sort by episode date instead - right now some shows are apparently sorted in reverse order on the website (they are so braindead)
 * Create the season folders at the "fetch_tvshow_available_seasons" function instead
 * All downloaded media gets empty subtitles - can probably be removed with ffmpeg
