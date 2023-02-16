@@ -1,11 +1,7 @@
 # DRTV-ripper - dr.dk/drtv
-DRTV-ripper is a software tool that facilitates the ripping of specific shows from dr.dk/drtv/. It is built using modules such as pyppeteer, asyncio, and youtube-dl - and can be used via a simple and easy to understand console interface.
+DRTV-ripper is a software tool that facilitates the ripping of specific shows or movies from dr.dk/drtv/. It is built using modules such as pyppeteer, asyncio, and youtube-dl - and can be used via a simple and easy to understand console interface.
 
-Please note that, at present, the download speed may be slower than expected. This is because yt-dlp is not currently compatible with DRTV shows, and youtube-dl is being used as an alternative. However, despite its reduced speed, the software remains highly functional and can still be used to download the desired content.
-
-Although the code is currently a mess, I plan to clean it up in the near future.
-
-And I will be sure to implement ripping movies an option as quickly as possible also! Even though it's pretty easy to do yourself with youtube-dl - but shhhh...
+Please note that, at present, the download speed may be slower than expected. This is because yt-dlp is not currently compatible with DRTV shows and movies, and youtube-dl is being used as an alternative. However, despite its reduced speed, the software remains highly functional and can still be used to download the desired content.
 
 # Functions in the near future
 These are some of the functions I plan to add to the code:
@@ -14,7 +10,6 @@ These are some of the functions I plan to add to the code:
 * Timedate to console output
 * Option to pick own quality
 * Option to download all seasons by typing 'all'
-* Option to convert media to .mkv instead of having .mp4 since .mkv is better for Plex etc.
 
 # Errors to fix
 These are the errors I plan to fix:
