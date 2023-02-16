@@ -10,13 +10,15 @@ And I will be sure to implement ripping movies an option as quickly as possible 
 # Functions in the near future
 These are some of the functions I plan to add to the code:
 
-* Sort by episode date instead - right now some shows are apparently sorted in reverse order on the website (they are so braindead)
 * Year added to episode title by scraping the year from dr.tv
 * Timedate to console output
-* Remove temp_drtv_ripper folder because it's technically not needed
 * Option to pick own quality
 * Option to download all seasons by typing 'all'
-* Each episode gets sorted into the corresponding season instead of having every episode in one big folder
+
+# Errors to fix
+* Sort by episode date instead - right now some shows are apparently sorted in reverse order on the website (they are so braindead)
+* Create the season folders at the "fetch_tvshow_available_seasons" function instead
+* All downloaded media gets empty subtitles - can probably be removed with ffmpeg
 
 # Installation
 1. Git clone this repo by doing 'git clone ...'
