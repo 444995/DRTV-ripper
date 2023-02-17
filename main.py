@@ -16,50 +16,46 @@ TVSHOW_SEASONS_XPATH = '//*[@id="season-list-container"]//a'
 
 class DRTVScraper:
     def __init__(self):
-        # self.output_yt_dl
         self.maximum_tries = 10
 
+        # Used to clear the console
         os.system('cls' if os.name == 'nt' else 'clear')
-        
-        print('Pick an option\n1. TV show\n2. Movie\n')
-        option = int(input('> '))
+ 
+        media_link = str(input("Enter the link to the media: "))
+        self.convert_media = str(input("Convert media from .mp4 to .mkv? It's lossless - (y/n): "))
 
-        if option == 1:
-            print('')
-            tvshow_link = str(input("Enter the link to the TV show: "))
-            self.convert_media = str(input("Convert media from .mp4 to .mkv? It's lossless - (y/n): "))
-    
-            tree = self.get_tree(tvshow_link)
+        # Checks if it's a tv show, and if it is, it proceeds
+        if "/serie/" in media_link or '/saeson/' in media_link:
+            tree = self.get_tree(media_link)
             tvshow_title = self.fetch_title(tree)
-            self.season_dic = self.fetch_tvshow_available_seasons(tree, tvshow_link)
-            season_links_to_scrape = self.get_info(tvshow_title, self.season_dic)
+            self.season_dic = self.fetch_tvshow_available_seasons(tree, media_link)
+            season_links_to_scrape = self.get_tvshow_info(tvshow_title, self.season_dic)
 
             for season_url in season_links_to_scrape:
                 episode_links = asyncio.run(self.fetch_episode_links(season_url))
                 self.scrape_episodes(episode_links, season_url, tvshow_title)
-                
-        elif option == 2:
-            print('')
-            movie_link = str(input('Enter the link to the movie: '))
-            self.convert_media = str(input("Convert media from .mp4 to .mkv? It's lossless - (y/n): "))
-            tree = self.get_tree(movie_link)
+
+        # Checks if it's a movie, and if it is, it proceeds 
+        elif "/program/" in media_link:
+            tree = self.get_tree(media_link)
             movie_title = self.fetch_title(tree)
-            self.scrape_movie(movie_title, movie_link)
+            self.scrape_movie(movie_title, media_link)
 
+        # If it can't recognize the link, it exits
         else:
-            print('Seems like you entered an invalid option.')
-            exit()
-
+            print('Unrecognized link. Please try again.')
+        
         print('\nProcess is finished!')
         input('')
 
 
     def get_tree(self, url):
-        # Get the html tree from the url
+        # Request the url
         response = requests.get(url)
 
-        # Parse the html tree
+        # Parse the response into an html tree
         tree = html.fromstring(response.content)
+
         return tree
 
 
@@ -101,7 +97,7 @@ class DRTVScraper:
         return dic
 
 
-    def get_info(self, tvshow_title, season_list):
+    def get_tvshow_info(self, tvshow_title, season_list):
         # Extract the text values into a list and sort it
         all_available_seasons = list(season_list.keys())
         all_available_seasons.sort()
@@ -109,11 +105,16 @@ class DRTVScraper:
         # Splits up the list into a string separated by commas
         seasons = ", ".join(str(season) for season in all_available_seasons)
         
+        # Prints the title of the tv show and the available seasons
         print(f'\nTV Show name: {tvshow_title}')
         print(f'Seasons available: {seasons}')
-        print('\nWhich seasons would you like to download?\n')
+        print('\nWhich seasons would you like to download?')
+        print(' - type \'all\' to download all seasons\n')
         seasons_to_scrape = input('> ')
-        
+
+        if seasons_to_scrape.lower() == 'all':
+            seasons_to_scrape = str(all_available_seasons)
+    
         # Extracts all the valid numbers from the input
         seasons_to_scrape = re.findall(r'\d+', seasons_to_scrape)
 
@@ -139,7 +140,6 @@ class DRTVScraper:
 
 
     async def fetch_episode_links(self, season_url):
-
         # Launch browser and create new page
         browser = await launch()
         page = await browser.newPage()
@@ -164,16 +164,16 @@ class DRTVScraper:
         except:
             pass
 
-        # Loop through each episode element and extract link
+        # A counter for how many episodes available
         episode_count = 0
 
         # Create a list to store the episode links
         episode_links = []
         while True:
             try:
-                # Get the episode link and append it to the list
                 episode_count += 1
-                
+
+                # Get the episode link
                 episode_element = await page.xpath(f'//*[@id="row1"]/section/div[2]/div/div[{episode_count}]/div/a')
                 episode_link = await (await episode_element[0].getProperty('href')).jsonValue()
 
@@ -188,8 +188,10 @@ class DRTVScraper:
                     await page.evaluate(f'document.querySelector("{button_selector}").click()')
                 except:
                     pass
+                
 
-            except: # If there are no more episodes, it will break the loop
+            # If there are no more episodes, it will break the loop
+            except: 
                 break
         
         await browser.close()
@@ -202,6 +204,7 @@ class DRTVScraper:
         
         # Loop through all the episode links
         for count, url in enumerate(episode_links, start=1):
+
             # Format season and episode numbers as zero-padded strings if less than 10
             season_str = f'S{specific_season:02d}'
             episode_str = f'E{count:02d}'
@@ -231,6 +234,7 @@ class DRTVScraper:
 
                     # Convert the file to mkv if the user wants to and the file is an mp4
                     if self.convert_media.lower() == 'y' and file_ext == '.mp4':
+                        print(f'^-> Converting {season_str}{episode_str} to a .mkv file')
                         output_filename = os.path.splitext(filename)[0] + '.mkv'
                         subprocess.check_output(['ffmpeg', '-i', filename, '-c', 'copy', output_filename], stderr=subprocess.STDOUT)
                         os.remove(filename)
@@ -262,12 +266,16 @@ class DRTVScraper:
         # Create the movie directory if it doesn't exist
         os.makedirs(movie_title, exist_ok=True)
 
+        # Print the movie title
+        print(f'\nMovie name: {movie_title}')
+
         # Download the movie using youtube-dl
-        print(f'\nDownloading {movie_title} | url: {movie_link}')
+        print(f'\nDownloading movie | url: {movie_link}')
         output = subprocess.check_output(['youtube-dl', '--no-call-home', '-o', f'{movie_title}/%(title)s.%(ext)s', '--verbose', movie_link], stderr=subprocess.STDOUT)
-       
+
         # Get the filename of the downloaded file
-        filename = self.get_filename(output, movie_title, movie_link)
+        console_output = output.decode('iso-8859-1').strip()
+        filename = self.get_filename(console_output, movie_title, movie_link)
 
         # Convert the file to mkv if the user wants to and the file is an mp4
         file_ext = os.path.splitext(filename)[1]
@@ -289,13 +297,11 @@ class DRTVScraper:
 
 
     def get_corresponding_season(self, url):
-        """
-        Returns the specific season that corresponds to the url
-        """
+        # Get the season number from the dictionary
         for season, link in self.season_dic.items():
             if link == url:
                 return season
 
-
+# Run the scraper
 if __name__ == "__main__":
     DRTVScraper()
