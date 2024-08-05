@@ -1,3 +1,4 @@
+- Does not work properly at the moment - I'm working on a new one.
 # DRTV-ripper - dr.dk/drtv
 DRTV-ripper is a software tool that is able to help rip specific shows or movies from dr.dk/drtv. It is built using modules such as pyppeteer, asyncio, and youtube-dl - and can be used via a simple and easy to understand console interface.
 
