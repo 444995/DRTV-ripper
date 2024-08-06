@@ -29,3 +29,6 @@ These are the errors that are gonna get fixed:
 2. Do 'pip install -r requirements.txt' 
 3. Install ffmpeg (important!)
 4. Run main.py
+
+# Disclaimer
+This project is for educational purposes only. Use at your own risk.
